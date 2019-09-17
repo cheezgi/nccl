@@ -14,12 +14,12 @@ mod pair;
 mod parser;
 mod token;
 mod scanner;
-mod value;
+//mod value;
 mod macros;
 
 pub use error::*;
 pub use pair::*;
-pub use value::*;
+//pub use value::*;
 pub use macros::*;
 
 use parser::*;

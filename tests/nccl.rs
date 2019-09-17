@@ -19,7 +19,7 @@ fn pair_keys() {
 fn pair_value_parse() {
     let mut p = ::Pair::new("top");
     p.add("bools");
-    p["bools"].add(true);
+    p["bools"].add("true");
     assert!(p["bools"].value_as::<bool>().unwrap());
 }
 
