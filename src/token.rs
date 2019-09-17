@@ -8,14 +8,14 @@ pub enum TokenKind {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Token {
+pub struct Token<'a> {
     pub kind: TokenKind,
-    pub lexeme: String,
+    pub lexeme: &'a str,
     pub line: u64,
 }
 
-impl Token {
-    pub fn new(kind: TokenKind, lexeme: String, line: u64) -> Self {
+impl<'a> Token<'a> {
+    pub fn new(kind: TokenKind, lexeme: &'a str, line: u64) -> Self {
         Token {
             kind: kind,
             lexeme: lexeme,

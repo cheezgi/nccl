@@ -1,6 +1,6 @@
 
 use error::{NcclError, ErrorKind};
-use value::Value;
+//use value::Value;
 use ::TryInto;
 
 use std::ops::{Index, IndexMut};
@@ -20,17 +20,28 @@ use std::error::Error;
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]
-pub struct Pair {
-    key: Value,
-    value: Vec<Pair>
+pub struct Pair<'a> {
+    key: &'a str,
+    value: Vec<Pair<'a>>,
 }
+//pub struct Pair {
+//    key: Value,
+//    value: Vec<Pair>
+//}
 
-impl Pair {
+impl<'a> Pair<'a> {
     /// Creates a new Pair.
-    pub fn new<T: Into<Value>>(key: T) -> Self {
+    pub fn new() -> Self {
         Pair {
-            key: key.into(),
+            key: "",
             value: vec![]
+        }
+    }
+
+    pub fn new_from(value: &'a str) -> Self {
+        Pair {
+            key: value,
+            value: vec![],
         }
     }
 
@@ -43,26 +54,39 @@ impl Pair {
     /// p.add(true);
     /// p.add("world");
     /// ```
-    pub fn add<T: Into<Value>>(&mut self, value: T) {
-        self.value.push(Pair::new(value.into()));
+    pub fn add(&mut self, value: &'a str) {
+        self.value.push(Pair::new_from(value));
     }
 
-    /// Recursively adds a slice to a Pair.
-    pub fn add_slice(&mut self, path: &[Value]) {
-        let s = self.traverse_path(&path[0..path.len() - 1]);
-        if !s.has_key(&path[path.len() - 1]) {
-            s.add(&path[path.len() - 1]);
-        }
-    }
-
-    /// Adds a Pair to a Pair.
-    pub fn add_pair(&mut self, pair: Pair) {
-        if !self.has_key(&pair.key) {
-            self.value.push(pair);
+    pub fn parse<T: std::str::FromStr>(&self) -> Result<T, NcclError> {
+        if self.value.is_empty() {
+            Err(NcclError::new(ErrorKind::IntoError, "could not parse value", 0))
         } else {
-            self[&pair.key].value = pair.value;
+            self.value[0].parse::<T>().or(Err(NcclError::new(ErrorKind::IntoError, "could not parse value", 0)))
         }
     }
+
+    pub fn push(&mut self, p: Pair<'a>) {
+        self.value.push(p);
+    }
+
+
+    ///// Recursively adds a slice to a Pair.
+    //pub fn add_slice(&mut self, path: &[&str]) {
+    //    let s = self.traverse_path(&path[0..path.len() - 1]);
+    //    if !s.has_key(&path[path.len() - 1]) {
+    //        s.add(&path[path.len() - 1]);
+    //    }
+    //}
+
+    ///// Adds a Pair to a Pair.
+    //pub fn add_pair(&mut self, pair: Pair) {
+    //    if self.value.contains(&pair) {
+    //        self.value.push(pair);
+    //    } else {
+    //        self[&pair.key].value = pair.value;
+    //    }
+    //}
 
     /// Test if a pair has a key.
     ///
@@ -74,7 +98,7 @@ impl Pair {
     /// assert!(p.has_key("server"));
     /// assert!(p["server"]["port"].has_key(80));
     /// ```
-    pub fn has_key<T>(&self, key: T) -> bool where Value: From<T> {
+    pub fn has_key(&self, key: &str) -> bool {
         let k = key.into();
         for item in &self.value {
             if item.key == k {
@@ -96,12 +120,12 @@ impl Pair {
     /// assert!(p.has_path(vec_into!["server", "port", 80]));
     /// # }
     /// ```
-    pub fn has_path(&self, path: Vec<Value>) -> bool {
+    pub fn has_path(&self, path: &[&str]) -> bool {
         if path.len() == 0 {
             true
         } else {
-            if self.has_key(path[0].clone()) {
-                self[path[0].clone()].has_path(path[1..path.len()].to_vec())
+            if self.has_key(&path[0]) {
+                self[&path[0]].has_path(&path[1..path.len()])
             } else {
                 false
             }
@@ -109,63 +133,63 @@ impl Pair {
     }
 
     /// Traverses a Pair using a slice, adding the item if it does not exist.
-    pub fn traverse_path(&mut self, path: &[Value]) -> &mut Pair {
+    pub fn traverse_path(&mut self, path: &[&str]) -> &mut Pair {
         if path.is_empty() {
-            self
+            &mut self
         } else {
             if !self.has_key(&path[0]) {
                 self.add(&path[0]);
             }
-            self.get(&path[0]).unwrap().traverse_path(&path[1..path.len()])
+            self[&path[0]].traverse_path(&path[1..path.len()])
         }
     }
 
-    /// Gets a child Pair from a Pair. Used by Pair's implementation of Index.
-    ///
-    /// ```
-    /// let mut p = nccl::Pair::new("top_level");
-    /// p.add("hello!");
-    /// p.get("hello!").unwrap();
-    /// ```
-    pub fn get<T>(&mut self, value: T) -> Result<&mut Pair, Box<dyn Error>> where Value: From<T> {
-        let v = value.into();
+    ///// Gets a child Pair from a Pair. Used by Pair's implementation of Index.
+    /////
+    ///// ```
+    ///// let mut p = nccl::Pair::new("top_level");
+    ///// p.add("hello!");
+    ///// p.get("hello!").unwrap();
+    ///// ```
+    //pub fn get(&mut self, value: T) -> Result<&mut Pair, Box<dyn Error>> where Value: From<T> {
+    //    let v = value.into();
 
-        if self.value.is_empty() {
-            return Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Pair does not have key: {}", v), 0)));
-        } else {
-            for item in &mut self.value {
-                if item.key == v {
-                    return Ok(item);
-                }
-            }
-        }
+    //    if self.value.is_empty() {
+    //        return Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Pair does not have key: {}", v), 0)));
+    //    } else {
+    //        for item in &mut self.value {
+    //            if item.key == v {
+    //                return Ok(item);
+    //            }
+    //        }
+    //    }
 
-        Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", v), 0)))
-    }
+    //    Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", v), 0)))
+    //}
 
-    /// Gets a mutable child Pair from a Pair. Used by Pair's implementation of
-    /// IndexMut.
-    ///
-    /// ```
-    /// let mut p = nccl::Pair::new("top_level");
-    /// p.add(32);
-    /// p.get(32).unwrap();
-    /// ```
-    pub fn get_ref<T>(&self, value: T) -> Result<&Pair, Box<dyn Error>> where Value: From<T> {
-        let v = value.into();
+    ///// Gets a mutable child Pair from a Pair. Used by Pair's implementation of
+    ///// IndexMut.
+    /////
+    ///// ```
+    ///// let mut p = nccl::Pair::new("top_level");
+    ///// p.add(32);
+    ///// p.get(32).unwrap();
+    ///// ```
+    //pub fn get_ref<T>(&self, value: T) -> Result<&Pair, Box<dyn Error>> where Value: From<T> {
+    //    let v = value.into();
 
-        if self.value.is_empty() {
-            return Ok(self);
-        } else {
-            for item in &self.value {
-                if item.key == v {
-                    return Ok(item);
-                }
-            }
-        }
+    //    if self.value.is_empty() {
+    //        return Ok(self);
+    //    } else {
+    //        for item in &self.value {
+    //            if item.key == v {
+    //                return Ok(item);
+    //            }
+    //        }
+    //    }
 
-        Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", v), 0)))
-    }
+    //    Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", v), 0)))
+    //}
 
     /// Returns the value of a pair as a string.
     /// ```
@@ -185,39 +209,39 @@ impl Pair {
         self.value().unwrap_or(or)
     }
 
-    fn value_raw(&self) -> Option<Value> {
+    fn value_raw(&self) -> Option<String> {
         if self.value.len() == 1 {
-            Some(self.value[0].key.clone())
+            Some(self.value[0].key.to_string())
         } else {
             None
         }
     }
 
-    /// Gets the value of a key as a specified type, if there is only one.
-    ///
-    /// Examples:
-    ///
-    /// ```
-    /// let p = nccl::parse_file("examples/long.nccl").unwrap();
-    /// assert!(!p["bool too"].value_as::<bool>().unwrap());
-    /// ```
-    pub fn value_as<T>(&self) -> Result<T, Box<dyn Error>> where Value: TryInto<T> {
-        match self.value_raw() {
-            Some(v) => match v.try_into() {
-                Ok(t) => Ok(t),
-                Err(_) => return Err(Box::new(NcclError::new(ErrorKind::IntoError, "Could not convert to T", 0)))
-            },
-            None => Err(Box::new(NcclError::new(ErrorKind::MultipleValues, "Could not convert value: multiple values. Use keys() or keys_as()", 0)))
-        }
-    }
+    ///// Gets the value of a key as a specified type, if there is only one.
+    /////
+    ///// Examples:
+    /////
+    ///// ```
+    ///// let p = nccl::parse_file("examples/long.nccl").unwrap();
+    ///// assert!(!p["bool too"].value_as::<bool>().unwrap());
+    ///// ```
+    //pub fn value_as<T>(&self) -> Result<T, Box<dyn Error>> {
+    //    match self.value_raw() {
+    //        Some(v) => match v.try_into() {
+    //            Ok(t) => Ok(t),
+    //            Err(_) => return Err(Box::new(NcclError::new(ErrorKind::IntoError, "Could not convert to T", 0)))
+    //        },
+    //        None => Err(Box::new(NcclError::new(ErrorKind::MultipleValues, "Could not convert value: multiple values. Use keys() or keys_as()", 0)))
+    //    }
+    //}
 
-    /// Gets the value of a key as a specified type or a default value.
-    pub fn value_as_or<T>(&self, or: T) -> T where Value: TryInto<T> {
-        self.value_as::<T>().unwrap_or(or)
-    }
+    ///// Gets the value of a key as a specified type or a default value.
+    //pub fn value_as_or<T>(&self, or: T) -> T where Value: TryInto<T> {
+    //    self.value_as::<T>().unwrap_or(or)
+    //}
 
-    fn keys(&self) -> Vec<Value> {
-        self.value.clone().into_iter().map(|x| x.key).collect()
+    fn keys(&self) -> Vec<String> {
+        self.value.clone().into_iter().map(|x| x.key.to_string()).collect()
     }
 
     /// Gets keys of a value as a vector of T.
@@ -229,10 +253,10 @@ impl Pair {
     /// let ports = config["server"]["port"].keys_as::<i64>().unwrap();
     /// assert_eq!(ports, vec![80, 443]);
     /// ```
-    pub fn keys_as<T>(&self) -> Result<Vec<T>, Box<dyn Error>> where Value: TryInto<T> {
+    pub fn keys_as<T: std::str::FromStr>(&self) -> Result<Vec<T>, Box<dyn Error>> {
         let mut v: Vec<T> = vec![];
         for key in self.keys() {
-            match key.try_into() {
+            match key.parse::<T>() {
                 Ok(k) => v.push(k),
                 Err(_) => return Err(Box::new(NcclError::new(ErrorKind::IntoError, "Could not convert to T", 0)))
             }
@@ -240,10 +264,10 @@ impl Pair {
         Ok(v)
     }
 
-    /// Gets keys of a value as a vector of T or returns a default vector.
-    pub fn keys_as_or<T>(&self, or: Vec<T>) -> Vec<T> where Value: TryInto<T> {
-        self.keys_as::<T>().unwrap_or(or)
-    }
+    ///// Gets keys of a value as a vector of T or returns a default vector.
+    //pub fn keys_as_or<T>(&self, or: Vec<T>) -> Vec<T> {
+    //    self.keys_as::<T>().unwrap_or(or)
+    //}
 
     /// Pretty-prints a Pair.
     ///
@@ -280,16 +304,25 @@ impl Pair {
     }
 }
 
-impl<T> Index<T> for Pair where Value: From<T> {
-    type Output = Pair;
-    fn index(&self, i: T) -> &Pair {
-        self.get_ref(i).unwrap()
+impl<'a> Index<&str> for Pair<'a> {
+    type Output = Pair<'a>;
+    fn index(&self, i: &str) -> &Self::Output {
+        for pair in self.value.iter() {
+            if pair.key == i {
+                return &pair;
+            }
+        }
+        panic!("pair does not contain key: {}", i);
     }
 }
 
-impl<T> IndexMut<T> for Pair where Value: From<T> {
-    fn index_mut(&mut self, i: T) -> &mut Pair {
-        self.get(i).unwrap()
+impl<'a> IndexMut<&str> for Pair<'a> {
+    fn index_mut(&mut self, idx: &str) -> &mut Pair<'a> {
+        for mut pair in &mut self.value {
+            if pair.key == idx {
+                return pair;
+            }
+        }
+        panic!("pair does not contain key: {}", idx);
     }
 }
-

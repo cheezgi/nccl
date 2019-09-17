@@ -11,20 +11,20 @@ enum Indent {
     Spaces(u8),
 }
 
-pub struct Scanner {
+pub struct Scanner<'a> {
     source: Vec<u8>,
-    tokens: Vec<Token>,
+    tokens: Vec<Token<'a>>,
     start: usize,
     current: usize,
     line: u64,
     indent: Indent,
 }
 
-impl Scanner {
+impl<'a> Scanner<'a> {
     pub fn new(source: String) -> Self {
         Scanner {
             source: source.into_bytes(),
-            tokens: Vec::new(),
+            tokens: vec![],
             start: 0,
             current: 0,
             line: 1,
@@ -151,7 +151,8 @@ impl Scanner {
     }
 
     fn string(&mut self) -> Result<(), NcclError> {
-        let mut value = String::new();
+        //let mut value = String::new();
+        let mut start = self.current;
         while self.peek() != b'"' && !self.is_at_end() {
             if self.peek() == b'\n' {
                 self.line += 1;
@@ -161,16 +162,16 @@ impl Scanner {
                 self.advance();
                 match self.peek() {
                     b'n' => {
-                        value.push('\n');
+                        //value.push('\n');
                     },
                     b'r' => {
-                        value.push('\r');
+                        //value.push('\r');
                     }
                     b'\\' => {
-                        value.push('\\');
+                        //value.push('\\');
                     },
                     b'"' => {
-                        value.push('"');
+                        //value.push('"');
                     },
                     b'\n' => {
                         self.advance();
@@ -204,11 +205,11 @@ impl Scanner {
     }
 
     fn add_token(&mut self, kind: TokenKind) {
-        let text = String::from_utf8(self.source[self.start..self.current].to_vec()).unwrap();
-        self.tokens.push(Token::new(kind, text, self.line));
+        //let text = String::from_utf8(self.source[self.start..self.current].to_vec()).unwrap();
+        self.tokens.push(Token::new(kind, std::str::from_utf8(&self.source[self.start..self.current]).unwrap(), self.line));
     }
 
-    fn add_token_string(&mut self, kind: TokenKind, value: String) {
+    fn add_token_string(&mut self, kind: TokenKind, value: &'b str) {
         self.tokens.push(Token::new(kind, value, self.line));
     }
 
