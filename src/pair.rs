@@ -1,7 +1,5 @@
 
 use error::{NcclError, ErrorKind};
-//use value::Value;
-use ::TryInto;
 
 use std::ops::{Index, IndexMut};
 use std::error::Error;
@@ -97,14 +95,12 @@ impl Pair {
     /// # }
     /// ```
     pub fn has_path(&self, path: Vec<String>) -> bool {
-        if path.len() == 0 {
+        if path.is_empty() {
             true
+        } else if self.has_key(&path[0]) {
+            self[&path[0]].has_path(path[1..path.len()].to_vec())
         } else {
-            if self.has_key(&path[0]) {
-                self[&path[0]].has_path(path[1..path.len()].to_vec())
-            } else {
-                false
-            }
+            false
         }
     }
 
@@ -128,19 +124,17 @@ impl Pair {
     /// p.get("hello!").unwrap();
     /// ```
     pub fn get(&mut self, value: &str) -> Result<&mut Pair, Box<dyn Error>> {
-        let v = value.clone();
-
         if self.value.is_empty() {
-            return Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Pair does not have key: {}", v), 0)));
+            return Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Pair does not have key: {}", value), 0)));
         } else {
             for item in &mut self.value {
-                if item.key == v {
+                if item.key == value {
                     return Ok(item);
                 }
             }
         }
 
-        Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", v), 0)))
+        Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", value), 0)))
     }
 
     /// Gets a mutable child Pair from a Pair. Used by Pair's implementation of
@@ -152,19 +146,17 @@ impl Pair {
     /// p.get("32").unwrap();
     /// ```
     pub fn get_ref(&self, value: &str) -> Result<&Pair, Box<dyn Error>> {
-        let v = value.clone();
-
         if self.value.is_empty() {
             return Ok(self);
         } else {
             for item in &self.value {
-                if item.key == v {
+                if item.key == value {
                     return Ok(item);
                 }
             }
         }
 
-        Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", v), 0)))
+        Err(Box::new(NcclError::new(ErrorKind::KeyNotFound, &format!("Could not find key: {}", value), 0)))
     }
 
     /// Returns the value of a pair as a string.
@@ -174,7 +166,7 @@ impl Pair {
     /// ```
     pub fn value(&self) -> Option<String>  {
         if self.value.len() == 1 {
-            Some(format!("{}", self.value[0].key.clone()))
+            Some(self.value[0].key.clone().to_string())
         } else {
             None
         }
@@ -205,7 +197,7 @@ impl Pair {
         match self.value_raw() {
             Some(v) => match v.parse::<T>() {
                 Ok(t) => Ok(t),
-                Err(_) => return Err(Box::new(NcclError::new(ErrorKind::IntoError, "Could not convert to T", 0)))
+                Err(_) => Err(Box::new(NcclError::new(ErrorKind::IntoError, "Could not convert to T", 0)))
             },
             None => Err(Box::new(NcclError::new(ErrorKind::MultipleValues, "Could not convert value: multiple values. Use keys() or keys_as()", 0)))
         }

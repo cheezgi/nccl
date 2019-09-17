@@ -22,7 +22,7 @@ impl Parser {
             current: 0,
             path: vec![],
             indent: 0,
-            tokens: tokens,
+            tokens,
             pair: Pair::new("__top_level__"),
             line: 1,
         }
@@ -33,8 +33,8 @@ impl Parser {
             current: 0,
             path: vec![],
             indent: 0,
-            tokens: tokens,
-            pair: pair,
+            tokens,
+            pair,
             line: 1
         }
     }
