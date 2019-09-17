@@ -99,9 +99,9 @@ impl<'a> Pair<'a> {
     /// assert!(p["server"]["port"].has_key(80));
     /// ```
     pub fn has_key(&self, key: &str) -> bool {
-        let k = key.into();
+        //let k = key.into();
         for item in &self.value {
-            if item.key == k {
+            if item.key == key {
                 return true;
             }
         }
@@ -132,17 +132,17 @@ impl<'a> Pair<'a> {
         }
     }
 
-    /// Traverses a Pair using a slice, adding the item if it does not exist.
-    pub fn traverse_path(&mut self, path: &[&str]) -> &mut Pair {
-        if path.is_empty() {
-            &mut self
-        } else {
-            if !self.has_key(&path[0]) {
-                self.add(&path[0]);
-            }
-            self[&path[0]].traverse_path(&path[1..path.len()])
-        }
-    }
+    ///// Traverses a Pair using a slice, adding the item if it does not exist.
+    //pub fn traverse_path(&mut self, path: &[&str]) -> &mut Pair {
+    //    if path.is_empty() {
+    //        &mut self
+    //    } else {
+    //        if !self.has_key(&path[0]) {
+    //            self.add(&path[0]);
+    //        }
+    //        self[&path[0]].traverse_path(&path[1..path.len()])
+    //    }
+    //}
 
     ///// Gets a child Pair from a Pair. Used by Pair's implementation of Index.
     /////

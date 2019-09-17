@@ -12,7 +12,7 @@ enum Indent {
 }
 
 pub struct Scanner<'a> {
-    source: Vec<u8>,
+    source: &'a [u8],
     tokens: Vec<Token<'a>>,
     start: usize,
     current: usize,
@@ -21,9 +21,9 @@ pub struct Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
-    pub fn new(source: String) -> Self {
+    pub fn new<'b>(source: &'a str) -> Scanner<'b> where 'a: 'b {
         Scanner {
-            source: source.into_bytes(),
+            source: source.as_bytes(),
             tokens: vec![],
             start: 0,
             current: 0,
@@ -134,7 +134,7 @@ impl<'a> Scanner<'a> {
                 self.advance();
 
                 let value = String::from_utf8(self.source[self.start..self.current].to_vec()).unwrap();
-                self.add_token_string(TokenKind::Value, value);
+                self.add_token(TokenKind::String(value));
 
                 while self.advance() != b'\n' {}
 
@@ -145,14 +145,14 @@ impl<'a> Scanner<'a> {
         }
 
         let value = String::from_utf8(self.source[self.start..self.current].to_vec()).unwrap();
-        self.add_token_string(TokenKind::Value, value);
+        self.add_token(TokenKind::String(value));
+        //self.add_token_string(TokenKind::Value, value);
 
         Ok(())
     }
 
     fn string(&mut self) -> Result<(), NcclError> {
-        //let mut value = String::new();
-        let mut start = self.current;
+        let mut value = String::new();
         while self.peek() != b'"' && !self.is_at_end() {
             if self.peek() == b'\n' {
                 self.line += 1;
@@ -162,16 +162,16 @@ impl<'a> Scanner<'a> {
                 self.advance();
                 match self.peek() {
                     b'n' => {
-                        //value.push('\n');
+                        value.push('\n');
                     },
                     b'r' => {
-                        //value.push('\r');
+                        value.push('\r');
                     }
                     b'\\' => {
-                        //value.push('\\');
+                        value.push('\\');
                     },
                     b'"' => {
-                        //value.push('"');
+                        value.push('"');
                     },
                     b'\n' => {
                         self.advance();
@@ -195,7 +195,8 @@ impl<'a> Scanner<'a> {
 
         self.advance();
 
-        self.add_token_string(TokenKind::Value, value);
+        //self.add_token_string(TokenKind::String(value), std::str::from_utf8(&self.source[self.start..self.current]).unwrap());
+        self.add_token(TokenKind::String(value));
 
         while self.peek() != b'\n' {
             self.advance();
@@ -207,10 +208,6 @@ impl<'a> Scanner<'a> {
     fn add_token(&mut self, kind: TokenKind) {
         //let text = String::from_utf8(self.source[self.start..self.current].to_vec()).unwrap();
         self.tokens.push(Token::new(kind, std::str::from_utf8(&self.source[self.start..self.current]).unwrap(), self.line));
-    }
-
-    fn add_token_string(&mut self, kind: TokenKind, value: &'b str) {
-        self.tokens.push(Token::new(kind, value, self.line));
     }
 
     fn is_at_end(&self) -> bool {

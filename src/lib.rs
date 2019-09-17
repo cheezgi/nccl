@@ -30,8 +30,9 @@ use std::fs::File;
 use std::io::Read;
 use std::error::Error;
 
-pub fn parse_file<'a>(data: String) -> Result<Pair<'a>, Vec<Box<dyn Error>>> {
-    Parser::new(Scanner::new(data).scan_tokens()?).parse()
+pub fn parse_file<'a, 'b: 'a>(data: &'b str) -> Result<Pair<'a>, Vec<Box<dyn Error>>> {
+    let mut scanner = Scanner::new(data);
+    Parser::new(scanner.scan_tokens()?).parse()
 }
 
 
@@ -75,17 +76,17 @@ pub fn parse_file<'a>(data: String) -> Result<Pair<'a>, Vec<Box<dyn Error>>> {
 //    }
 //}
 
-/// Parses raw string data.
-///
-/// Examples:
-///
-/// ```
-/// let raw = nccl::parse_string("hello\n\tworld!").unwrap();
-/// assert_eq!(raw["hello"].value_as::<String>().unwrap(), "world!");
-/// ```
-pub fn parse_string(data: &str) -> Result<Pair, Vec<Box<dyn Error>>> {
-    Parser::new(Scanner::new(data.to_owned()).scan_tokens()?).parse()
-}
+///// Parses raw string data.
+/////
+///// Examples:
+/////
+///// ```
+///// let raw = nccl::parse_string("hello\n\tworld!").unwrap();
+///// assert_eq!(raw["hello"].value_as::<String>().unwrap(), "world!");
+///// ```
+//pub fn parse_string(data: &str) -> Result<Pair, Vec<Box<dyn Error>>> {
+//    Parser::new(Scanner::new(data.to_owned()).scan_tokens()?).parse()
+//}
 
 /// Allows safe type conversions. Copied from nightly stdlib.
 pub trait TryFrom<T>: Sized {
